@@ -1404,7 +1404,11 @@ VM_ENV_FLAGS_SET(const VALUE *ep, VALUE flag)
 {
     VALUE flags = ep[VM_ENV_DATA_INDEX_FLAGS];
     VM_ASSERT(FIXNUM_P(flags));
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    VM_FORCE_WRITE_SPECIAL_CONST(&ep[VM_ENV_DATA_INDEX_FLAGS], BI_BIT_OP(flags, |, flag));
+	#else
     VM_FORCE_WRITE_SPECIAL_CONST(&ep[VM_ENV_DATA_INDEX_FLAGS], flags | flag);
+	#endif
 }
 
 static inline void
@@ -1412,7 +1416,11 @@ VM_ENV_FLAGS_UNSET(const VALUE *ep, VALUE flag)
 {
     VALUE flags = ep[VM_ENV_DATA_INDEX_FLAGS];
     VM_ASSERT(FIXNUM_P(flags));
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    VM_FORCE_WRITE_SPECIAL_CONST(&ep[VM_ENV_DATA_INDEX_FLAGS], CULONG(flags) & ~CULONG(flag));
+	#else
     VM_FORCE_WRITE_SPECIAL_CONST(&ep[VM_ENV_DATA_INDEX_FLAGS], flags & ~flag);
+	#endif
 }
 
 static inline unsigned long

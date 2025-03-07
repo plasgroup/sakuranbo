@@ -100,10 +100,17 @@ METHOD_ENTRY_FLAGS_SET(rb_method_entry_t *me, rb_method_visibility_t visi, unsig
 static inline void
 METHOD_ENTRY_FLAGS_COPY(rb_method_entry_t *dst, const rb_method_entry_t *src)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    dst->flags =
+      (CULONG(dst->flags) & ~(IMEMO_FL_USER0|IMEMO_FL_USER1|IMEMO_FL_USER2
+      |IMEMO_FL_USER3)) |
+        (CULONG(src->flags) & (IMEMO_FL_USER0|IMEMO_FL_USER1|IMEMO_FL_USER2|IMEMO_FL_USER3));
+	#else
     dst->flags =
       (dst->flags & ~(IMEMO_FL_USER0|IMEMO_FL_USER1|IMEMO_FL_USER2
       |IMEMO_FL_USER3)) |
         (src->flags & (IMEMO_FL_USER0|IMEMO_FL_USER1|IMEMO_FL_USER2|IMEMO_FL_USER3));
+	#endif
 }
 
 typedef enum {
@@ -200,7 +207,11 @@ struct rb_method_definition_struct {
 struct rb_id_table;
 
 typedef struct rb_method_definition_struct rb_method_definition_t;
+#if defined(__CHERI_PURE_CAPABILITY__) 
+STATIC_ASSERT(sizeof_method_def, offsetof(rb_method_definition_t, body) <= 16);
+#else
 STATIC_ASSERT(sizeof_method_def, offsetof(rb_method_definition_t, body) <= 8);
+#endif
 
 #define UNDEFINED_METHOD_ENTRY_P(me) (!(me) || !(me)->def || (me)->def->type == VM_METHOD_TYPE_UNDEF)
 #define UNDEFINED_REFINED_METHOD_P(def) \

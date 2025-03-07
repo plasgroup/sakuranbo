@@ -120,6 +120,36 @@ typedef unsigned LONG_LONG ID;
 # define RBIMPL_VALUE_ONE  1ULL
 # define RBIMPL_VALUE_FULL ULLONG_MAX
 
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+typedef uintptr_t VALUE;
+typedef unsigned long ULVALUE;  
+typedef uintptr_t ID; 
+# define SIGNED_VALUE long
+# define SIZEOF_VALUE 16
+# define SIZEOF_ULVALUE 8
+# undef PRI_VALUE_PREFIX
+# define RBIMPL_VALUE_NULL (uintptr_t)0
+# define RBIMPL_VALUE_ONE  (uintptr_t)1
+# define RBIMPL_VALUE_FULL ULONG_MAX
+
+
+// cheri bitwise address 
+#define NO_PROVENANCE __attribute__((cheri_no_provenance))
+#define CULONG(x) ((size_t) (x))
+#define BI_BIT_OP(lhs, op, rhs) ((CULONG(lhs)) op (CULONG(rhs)))
+#define TRI_BIT_OP(lhs, op1, mid, op2, rhs) ((CULONG(lhs)) op1 (CULONG(mid)) op2 (CULONG(rhs)))
+#define MASK_CMP(value, mask, expected) (BI_BIT_OP((BI_BIT_OP(value, &, mask)), ==, expected))
+
+// cheri address arithmetic
+#define BI_ART_OP BI_BIT_OP
+#define TRI_ART_OP TRI_BIT_OP
+
+// cheri alignment 
+#define CALIGN __attribute__((aligned(SIZEOF_VALUE)))
+
+// hash
+#define CHASH(x) ((ptraddr_t) (x))
+
 #else
 # error ---->> ruby requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
 #endif

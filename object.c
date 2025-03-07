@@ -151,8 +151,13 @@ rb_class_allocate_instance(VALUE klass)
 VALUE
 rb_obj_setup(VALUE obj, VALUE klass, VALUE type)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    ULVALUE ignored_flags = RUBY_FL_PROMOTED | RUBY_FL_SEEN_OBJ_ID;
+    RBASIC(obj)->flags = (CULONG(type) & ~ignored_flags) | (RBASIC(obj)->flags & ignored_flags);
+	#else
     VALUE ignored_flags = RUBY_FL_PROMOTED | RUBY_FL_SEEN_OBJ_ID;
     RBASIC(obj)->flags = (type & ~ignored_flags) | (RBASIC(obj)->flags & ignored_flags);
+	#endif
     RBASIC_SET_CLASS(obj, klass);
     return obj;
 }

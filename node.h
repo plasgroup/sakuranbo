@@ -71,8 +71,13 @@ enum node_type rb_node_get_type(const NODE *n);
 
 RUBY_SYMBOL_EXPORT_END
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#define NODE_LSHIFT (NODE_TYPESHIFT+7)
+#define NODE_LMASK  (((SIGNED_VALUE)1<<(sizeof(ULVALUE)*CHAR_BIT-NODE_LSHIFT))-1)
+#else
 #define NODE_LSHIFT (NODE_TYPESHIFT+7)
 #define NODE_LMASK  (((SIGNED_VALUE)1<<(sizeof(VALUE)*CHAR_BIT-NODE_LSHIFT))-1)
+#endif
 
 static inline int
 nd_line(const NODE *n)
@@ -85,7 +90,11 @@ nd_line(const NODE *n)
 static inline void
 nd_set_line(NODE *n, SIGNED_VALUE l)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    n->flags &= ~(~(ULVALUE)0 << NODE_LSHIFT);
+	#else
     n->flags &= ~(~(VALUE)0 << NODE_LSHIFT);
+	#endif
     n->flags |= ((VALUE)(l & NODE_LMASK) << NODE_LSHIFT);
 }
 

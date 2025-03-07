@@ -98,12 +98,16 @@ void *alloca();
 #ifndef ElfW
 # if SIZEOF_VOIDP == 8
 #  define ElfW(x) Elf64##_##x
+# elif defined(__CHERI_PURE_CAPABILITY__)
+#  define ElfW(x) Elf64##_##x
 # else
 #  define ElfW(x) Elf32##_##x
 # endif
 #endif
 #ifndef ELF_ST_TYPE
 # if SIZEOF_VOIDP == 8
+#  define ELF_ST_TYPE ELF64_ST_TYPE
+# elif defined(__CHERI_PURE_CAPABILITY__)
 #  define ELF_ST_TYPE ELF64_ST_TYPE
 # else
 #  define ELF_ST_TYPE ELF32_ST_TYPE
@@ -146,6 +150,11 @@ void *alloca();
 
 #define kprintf(...) fprintf(errout, "" __VA_ARGS__)
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+# define SIZEOF_VALUE 16
+#define CALIGN __attribute__((aligned(SIZEOF_VALUE)))
+#endif
+
 typedef struct line_info {
     const char *dirname;
     const char *filename;
@@ -157,7 +166,11 @@ typedef struct line_info {
     const char *sname; /* function name */
 
     struct line_info *next;
+#if defined(__CHERI_PURE_CAPABILITY__) 
+} line_info_t CALIGN;
+#else
 } line_info_t;
+#endif
 
 struct dwarf_section {
     char *ptr;
@@ -212,7 +225,11 @@ struct debug_section_definition {
 };
 
 /* Avoid consuming stack as this module may be used from signal handler */
+#if defined(__CHERI_PURE_CAPABILITY__) 
+static char binary_filename[PATH_MAX + 1] CALIGN;
+#else
 static char binary_filename[PATH_MAX + 1];
+#endif
 
 static unsigned long
 uleb128(const char **p)
@@ -604,7 +621,11 @@ static void
 follow_debuglink(const char *debuglink, int num_traces, void **traces,
                  obj_info_t **objp, line_info_t *lines, int offset, FILE *errout)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    static const char CALIGN global_debug_dir[] = "/usr/lib/debug";
+	#else
     static const char global_debug_dir[] = "/usr/lib/debug";
+	#endif
     const size_t global_debug_dir_len = sizeof(global_debug_dir) - 1;
     char *p;
     obj_info_t *o1 = *objp, *o2;
@@ -1008,6 +1029,8 @@ read_uintptr(const char **ptr)
     *ptr = (char *)(p + SIZEOF_VOIDP);
 #if SIZEOF_VOIDP == 8
     return get_uint64(p);
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+	return get_uint64(p);
 #else
     return get_uint32(p);
 #endif
@@ -1178,6 +1201,8 @@ debug_info_reader_read_addr_value_member(DebugInfoReader *reader, DebugInfoValue
         set_uint_value(v, read_uint32(&reader->p));
     } else if (size == 8) {
         set_uint_value(v, read_uint64(&reader->p));
+	} else if (size == 16) {
+		set_uint_value(v, read_uint64(&reader->p));
     } else {
         return false;
     }
@@ -1944,9 +1969,15 @@ debug_info_read(DebugInfoReader *reader, int num_traces, void **traces,
         /* ranges_inspect(reader, &ranges, errout); */
         /* kprintf("%d:%tx: %x ",__LINE__,diepos,die.tag); */
         for (int i=offset; i < num_traces; i++) {
+			#if defined(__CHERI_PURE_CAPABILITY__) 
+            size_t addr = (size_t)traces[i];
+            ptraddr_t offset = addr - (size_t)reader->obj->base_addr + (size_t)reader->obj->vmaddr;
+            ptraddr_t saddr = ranges_include(reader, &ranges, offset, &rnglists_header, errout);
+			#else
             uintptr_t addr = (uintptr_t)traces[i];
             uintptr_t offset = addr - reader->obj->base_addr + reader->obj->vmaddr;
             uintptr_t saddr = ranges_include(reader, &ranges, offset, &rnglists_header, errout);
+			#endif
             if (saddr == UINTPTR_MAX) return false;
             if (saddr) {
                 /* kprintf("%d:%tx: %d %lx->%lx %x %s: %s/%s %d %s %s %s\n",__LINE__,die.pos, i,addr,offset, die.tag,line.sname,line.dirname,line.filename,line.line,reader->obj->path,line.sname,lines[i].sname); */
@@ -1962,7 +1993,11 @@ debug_info_read(DebugInfoReader *reader, int num_traces, void **traces,
                 lines[i].path = reader->obj->path;
                 lines[i].base_addr = line.base_addr;
                 lines[i].sname = line.sname;
+				#if defined(__CHERI_PURE_CAPABILITY__) 
+                lines[i].saddr = saddr + (size_t) reader->obj->base_addr - (size_t) reader->obj->vmaddr;
+				#else
                 lines[i].saddr = saddr + reader->obj->base_addr - reader->obj->vmaddr;
+				#endif
             }
         }
     }

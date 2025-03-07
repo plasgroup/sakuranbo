@@ -141,7 +141,11 @@ thread_register_callback(VALUE thread, VALUE strict)
         RUBY_INTERNAL_THREAD_EVENT_RESUMED |
         RUBY_INTERNAL_THREAD_EVENT_SUSPENDED |
         RUBY_INTERNAL_THREAD_EVENT_EXITED,
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        (void *)(uintptr_t)RTEST(strict)
+		#else
         (void *)RTEST(strict)
+		#endif
     );
 
     return Qnil;

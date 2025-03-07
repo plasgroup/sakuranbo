@@ -322,6 +322,8 @@ objid_hash(VALUE obj)
     return (st_index_t)st_index_hash((st_index_t)NUM2LONG(object_id));
 #elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
     return (st_index_t)st_index_hash((st_index_t)NUM2LL(object_id));
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+	return (st_index_t)st_index_hash((st_index_t)NUM2LL(object_id));
 #endif
 }
 
@@ -1481,7 +1483,11 @@ hash_alloc_flags(VALUE klass, VALUE flags, VALUE ifnone, bool st)
     const VALUE wb = (RGENGC_WB_PROTECTED_HASH ? FL_WB_PROTECTED : 0);
     const size_t size = sizeof(struct RHash) + (st ? sizeof(st_table) : sizeof(ar_table));
 
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    NEWOBJ_OF(hash, struct RHash, klass, T_HASH | BI_BIT_OP(wb, |, flags), size, 0);
+	#else
     NEWOBJ_OF(hash, struct RHash, klass, T_HASH | wb | flags, size, 0);
+	#endif
 
     RHASH_SET_IFNONE((VALUE)hash, ifnone);
 

@@ -1975,7 +1975,11 @@ djb2(const uint8_t *str, size_t len)
     st_index_t hash = 5381;
 
     for (size_t i = 0; i < len; i++) {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        hash = ((hash << 5) + (unsigned long)(hash)) + str[i];
+		#else
         hash = ((hash << 5) + hash) + str[i];
+		#endif 
     }
 
     return hash;
@@ -13307,7 +13311,11 @@ append_bitstack_value(struct parser_params *p, stack_type stack, VALUE mesg)
         rb_str_cat_cstr(mesg, "0");
     }
     else {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        unsigned long mask = (stack_type)1U << (CHAR_BIT * sizeof(stack_type) - 1);
+		#else
         stack_type mask = (stack_type)1U << (CHAR_BIT * sizeof(stack_type) - 1);
+		#endif 
         for (; mask && !(stack & mask); mask >>= 1) continue;
         for (; mask; mask >>= 1) rb_str_cat(mesg, stack & mask ? "1" : "0", 1);
     }

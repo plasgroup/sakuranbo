@@ -1827,8 +1827,9 @@ st_hash(const void *ptr, size_t len, st_index_t h)
 #define UNALIGNED_ADD_16 UNALIGNED_ADD(14); UNALIGNED_ADD(13); UNALIGNED_ADD(12); UNALIGNED_ADD(11); \
     UNALIGNED_ADD(10); UNALIGNED_ADD(9); UNALIGNED_ADD(8); UNALIGNED_ADD(7); UNALIGNED_ADD_8
 #define UNALIGNED_ADD_ALL UNALIGNED_ADD_16
-#endif
+#else
 #define UNALIGNED_ADD_ALL UNALIGNED_ADD_8
+#endif
 #else
 #define UNALIGNED_ADD_ALL UNALIGNED_ADD_4
 #endif
@@ -2095,7 +2096,11 @@ st_index_t
 st_numhash(st_data_t n)
 {
     enum {s1 = 11, s2 = 3};
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    return (st_index_t)(((ptraddr_t)(n)>>s1|((ptraddr_t)(n)<<s2)) ^ ((ptraddr_t)(n)>>s2));
+	#else
     return (st_index_t)((n>>s1|(n<<s2)) ^ (n>>s2));
+	#endif
 }
 
 #ifdef RUBY

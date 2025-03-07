@@ -200,6 +200,23 @@ rb_num_negative_int_p(VALUE num)
 static inline double
 rb_float_flonum_value(VALUE v)
 {
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#if USE_FLONUM
+	if (CULONG(v) != (ULVALUE)0x8000000000000002) { /* LIKELY */
+		union {
+			double d;
+			ULVALUE v;
+		} t;
+	
+		ULVALUE b63 = (CULONG(v) >> 63);
+		/* e: xx1... -> 011... */
+		/*    xx0... -> 100... */
+		/*      ^b63           */
+		t.v = RUBY_BIT_ROTR((2 - b63) | (CULONG(v) & ~(ULVALUE)0x03), 3);
+		return t.d;
+	}
+#endif
+#else
 #if USE_FLONUM
     if (v != (VALUE)0x8000000000000002) { /* LIKELY */
         union {
@@ -214,6 +231,7 @@ rb_float_flonum_value(VALUE v)
         t.v = RUBY_BIT_ROTR((2 - b63) | (v & ~(VALUE)0x03), 3);
         return t.d;
     }
+#endif
 #endif
     return 0.0;
 }

@@ -3550,14 +3550,22 @@ rb_obj_traverse_replace(VALUE obj,
 }
 
 struct RVALUE {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    VALUE flags NO_PROVENANCE;
+	#else
     VALUE flags;
+	#endif
     VALUE klass;
     VALUE v1;
     VALUE v2;
     VALUE v3;
 };
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+static const ULVALUE fl_users = FL_USER1  | FL_USER2  | FL_USER3  |
+#else
 static const VALUE fl_users = FL_USER1  | FL_USER2  | FL_USER3  |
+#endif
                               FL_USER4  | FL_USER5  | FL_USER6  | FL_USER7  |
                               FL_USER8  | FL_USER9  | FL_USER10 | FL_USER11 |
                               FL_USER12 | FL_USER13 | FL_USER14 | FL_USER15 |
@@ -3604,7 +3612,11 @@ move_leave(VALUE obj, struct obj_traverse_replace_data *data)
     struct RVALUE *dst = (struct RVALUE *)v;
     struct RVALUE *src = (struct RVALUE *)obj;
 
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    dst->flags = (dst->flags & ~fl_users) | CULONG(src->flags & fl_users);
+	#else
     dst->flags = (dst->flags & ~fl_users) | (src->flags & fl_users);
+	#endif
 
     dst->v1 = src->v1;
     dst->v2 = src->v2;

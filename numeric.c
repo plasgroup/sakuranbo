@@ -3270,8 +3270,13 @@ rb_num2ulong(VALUE val)
 void
 rb_out_of_int(SIGNED_VALUE num)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    rb_raise(rb_eRangeError, "integer %ld too %s to convert to 'int'",
+		num, num < 0 ? "small" : "big");
+	#else
     rb_raise(rb_eRangeError, "integer %"PRIdVALUE " too %s to convert to 'int'",
              num, num < 0 ? "small" : "big");
+	#endif
 }
 
 #if SIZEOF_INT < SIZEOF_LONG
@@ -3369,8 +3374,13 @@ NORETURN(static void rb_out_of_short(SIGNED_VALUE num));
 static void
 rb_out_of_short(SIGNED_VALUE num)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    rb_raise(rb_eRangeError, "integer %ld too %s to convert to 'short'",
+             num, num < 0 ? "small" : "big");
+	#else
     rb_raise(rb_eRangeError, "integer %"PRIdVALUE " too %s to convert to 'short'",
              num, num < 0 ? "small" : "big");
+	#endif
 }
 
 static void
@@ -4417,7 +4427,11 @@ int_remainder(VALUE x, VALUE y)
         if (FIXNUM_P(y)) {
             VALUE z = fix_mod(x, y);
             RUBY_ASSERT(FIXNUM_P(z));
+			#if defined(__CHERI_PURE_CAPABILITY__) 
+            if (z != INT2FIX(0) && (SIGNED_VALUE) BI_BIT_OP(x, ^, y) < 0)
+			#else
             if (z != INT2FIX(0) && (SIGNED_VALUE)(x ^ y) < 0)
+			#endif
                 z = fix_minus(z, y);
             return z;
         }

@@ -22,6 +22,15 @@ RUBY_SYMBOL_EXPORT_BEGIN
 typedef unsigned long st_data_t;
 #elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
 typedef unsigned LONG_LONG st_data_t;
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+typedef uintptr_t st_data_t;
+
+typedef unsigned long ULVALUE; 
+# define SIZEOF_ULVALUE 8
+#define CULONG(x) ((size_t) (x))
+#define BI_BIT_OP(lhs, op, rhs) ((CULONG(lhs)) op (CULONG(rhs)))
+#define TRI_BIT_OP(lhs, op1, mid, op2, rhs) ((CULONG(lhs)) op1 (CULONG(mid)) op2 (CULONG(rhs)))
+#define MASK_CMP(value, mask, expected) (BI_BIT_OP((BI_BIT_OP(value, &, mask)), ==, expected))
 #else
 # error ---->> st.c requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
 #endif
@@ -47,7 +56,11 @@ typedef unsigned LONG_LONG st_data_t;
 
 typedef struct st_table st_table;
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+typedef ULVALUE st_index_t;
+#else
 typedef st_data_t st_index_t;
+#endif
 
 /* Maximal value of unsigned integer type st_index_t.  */
 #define MAX_ST_INDEX_VAL (~(st_index_t) 0)
@@ -55,8 +68,13 @@ typedef st_data_t st_index_t;
 typedef int st_compare_func(st_data_t, st_data_t);
 typedef st_index_t st_hash_func(st_data_t);
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+typedef char st_check_for_sizeof_st_index_t[SIZEOF_ULVALUE == (int)sizeof(st_index_t) ? 1 : -1];
+#define SIZEOF_ST_INDEX_T SIZEOF_ULVALUE
+#else
 typedef char st_check_for_sizeof_st_index_t[SIZEOF_VOIDP == (int)sizeof(st_index_t) ? 1 : -1];
 #define SIZEOF_ST_INDEX_T SIZEOF_VOIDP
+#endif
 
 struct st_hash_type {
     int (*compare)(st_data_t, st_data_t); /* st_compare_func* */
@@ -92,7 +110,11 @@ struct st_table {
     st_index_t entries_start, entries_bound;
     /* Array of size 2^entry_power.  */
     st_table_entry *entries;
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+} __attribute__((aligned(16)));
+#else
 };
+#endif
 
 #define st_is_member(table,key) st_lookup((table),(key),(st_data_t *)0)
 

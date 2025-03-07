@@ -402,7 +402,11 @@ static inline enum method_missing_reason rb_method_call_status(rb_execution_cont
 static VALUE
 gccct_hash(VALUE klass, ID mid)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    return (klass >> 3) ^ (ULVALUE)mid;
+	#else 
     return (klass >> 3) ^ (VALUE)mid;
+	#endif
 }
 
 NOINLINE(static const struct rb_callcache *gccct_method_search_slowpath(rb_vm_t *vm, VALUE klass, unsigned int index, const struct rb_callinfo * ci));

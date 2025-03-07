@@ -564,11 +564,19 @@ rb_sys_fail_on_write(rb_io_t *fptr)
     VALUE errinfo = rb_syserr_new_path(e, (fptr)->pathv);
 #if defined EPIPE
     if (fptr_signal_on_epipe(fptr) && (e == EPIPE)) {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        const VALUE sig =
+# if defined SIGPIPE
+            (ULVALUE) INT2FIX(SIGPIPE) - (ULVALUE) INT2FIX(0) +
+# endif
+			(ULVALUE) INT2FIX(0);
+		#else
         const VALUE sig =
 # if defined SIGPIPE
             INT2FIX(SIGPIPE) - INT2FIX(0) +
 # endif
             INT2FIX(0);
+		#endif
         rb_ivar_set(errinfo, ruby_static_id_signo, sig);
     }
 #endif
@@ -11587,6 +11595,17 @@ rb_f_syscall(int argc, VALUE *argv, VALUE _)
 {
     VALUE arg[8];
 #if SIZEOF_VOIDP == 8 && defined(HAVE___SYSCALL) && SIZEOF_INT != 8 /* mainly *BSD */
+# define SYSCALL __syscall
+# define NUM2SYSCALLID(x) NUM2LONG(x)
+# define RETVAL2NUM(x) LONG2NUM(x)
+# if SIZEOF_LONG == 8
+    long num, retval = -1;
+# elif SIZEOF_LONG_LONG == 8
+    long long num, retval = -1;
+# else
+#  error ---->> it is asserted that __syscall takes the first argument and returns retval in 64bit signed integer. <<----
+# endif
+#elif defined(__CHERI_PURE_CAPABILITY__) && defined(HAVE___SYSCALL) && SIZEOF_INT != 8
 # define SYSCALL __syscall
 # define NUM2SYSCALLID(x) NUM2LONG(x)
 # define RETVAL2NUM(x) LONG2NUM(x)

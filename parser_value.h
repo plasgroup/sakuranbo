@@ -99,6 +99,18 @@ typedef unsigned LONG_LONG ID;
 # define RBIMPL_VALUE_ONE  1ULL
 # define RBIMPL_VALUE_FULL ULLONG_MAX
 
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+typedef uintptr_t VALUE;
+typedef uintptr_t ID; 
+typedef unsigned long ULVALUE;  
+# define SIGNED_VALUE long
+# define SIZEOF_VALUE 16
+# define SIZEOF_ULVALUE 8
+# undef PRI_VALUE_PREFIX
+# define RBIMPL_VALUE_NULL (uintptr_t)0
+# define RBIMPL_VALUE_ONE  (uintptr_t)1
+# define RBIMPL_VALUE_FULL ULONG_MAX
+
 #else
 # error ---->> ruby requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
 #endif

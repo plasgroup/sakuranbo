@@ -13,6 +13,8 @@ extern "C" {
 
 #if SIZEOF_LONG == SIZEOF_VOIDP
 #  define ST2NUM(x) ULONG2NUM(x)
+#elif defined(__CHERI_PURE_CAPABILITY__)
+#  define ST2NUM(x) ULONG2NUM(x)
 #else
 #  define ST2NUM(x) ULL2NUM(x)
 #endif
@@ -64,6 +66,8 @@ VALUE st_spec_st_lookup(VALUE self) {
   st_free_table(tbl);
 #if SIZEOF_LONG == SIZEOF_VOIDP
   return ULONG2NUM(result);
+  #elif defined(__CHERI_PURE_CAPABILITY__)
+return ULONG2NUM(result);
 #else
   return ULL2NUM(result);
 #endif

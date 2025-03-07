@@ -46,6 +46,10 @@
 #include "ruby_assert.h"
 #include "vm_sync.h"
 
+#if defined(__CHERI_PURE_CAPABILITY__)
+#include <cheri.h>
+#endif
+
 #if defined HAVE_CRYPT_R
 # if defined HAVE_CRYPT_H
 #  include <crypt.h>
@@ -357,7 +361,7 @@ static int fstring_cmp(VALUE a, VALUE b);
 
 static VALUE register_fstring(VALUE str, bool copy, bool force_precompute_hash);
 
-#if SIZEOF_LONG == SIZEOF_VOIDP
+#if SIZEOF_LONG == SIZEOF_VOIDP || defined(__CHERI_PURE_CAPABILITY__)
 #define PRECOMPUTED_FAKESTR_HASH 1
 #else
 #endif
@@ -543,7 +547,7 @@ register_fstring(VALUE str, bool copy, bool force_precompute_hash)
         .force_precompute_hash = force_precompute_hash
     };
 
-#if SIZEOF_VOIDP == SIZEOF_LONG
+#if SIZEOF_VOIDP == SIZEOF_LONG || defined(__CHERI_PURE_CAPABILITY__)
     if (FL_TEST_RAW(str, STR_FAKESTR)) {
         // if the string hasn't been interned, we'll need the hash twice, so we
         // compute it once and store it in capa
@@ -672,13 +676,19 @@ VALUE rb_fs;
 static inline const char *
 search_nonascii(const char *p, const char *e)
 {
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    const ULVALUE *s, *t;
+	#else
     const uintptr_t *s, *t;
+	#endif
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # if SIZEOF_UINTPTR_T == 8
 #  define NONASCII_MASK UINT64_C(0x8080808080808080)
 # elif SIZEOF_UINTPTR_T == 4
 #  define NONASCII_MASK UINT32_C(0x80808080)
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+#  define NONASCII_MASK UINT64_C(0x8080808080808080)
 # else
 #  error "don't know what to do."
 # endif
@@ -687,14 +697,24 @@ search_nonascii(const char *p, const char *e)
 #  define NONASCII_MASK ((uintptr_t)0x80808080UL << 32 | (uintptr_t)0x80808080UL)
 # elif SIZEOF_UINTPTR_T == 4
 #  define NONASCII_MASK 0x80808080UL /* or...? */
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+#  define NONASCII_MASK UINT64_C(0x8080808080808080)
 # else
 #  error "don't know what to do."
 # endif
 #endif
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+	if (e - p >= 8) {
+#else
     if (UNALIGNED_WORD_ACCESS || e - p >= SIZEOF_VOIDP) {
+#endif 
 #if !UNALIGNED_WORD_ACCESS
+#if defined(__CHERI_PURE_CAPABILITY__) 
+		if ((uintptr_t)p % 8) {
+#else
         if ((uintptr_t)p % SIZEOF_VOIDP) {
+#endif
             int l = SIZEOF_VOIDP - (uintptr_t)p % SIZEOF_VOIDP;
             p += l;
             switch (l) {
@@ -718,8 +738,13 @@ search_nonascii(const char *p, const char *e)
 #else
 #define aligned_ptr(value) (uintptr_t *)(value)
 #endif
+#if defined(__CHERI_PURE_CAPABILITY__) 
+        s = (ULVALUE *)p;
+		t = (ULVALUE *)(e - (8-1));
+		#else
         s = aligned_ptr(p);
         t = (uintptr_t *)(e - (SIZEOF_VOIDP-1));
+#endif
 #undef aligned_ptr
         for (;s < t; s++) {
             if (*s & NONASCII_MASK) {
@@ -2156,7 +2181,12 @@ count_utf8_lead_bytes_with_word(const uintptr_t *s)
     uintptr_t d = *s;
 
     /* Transform so that bit0 indicates whether we have a UTF-8 leading byte or not. */
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+	d = (d>>6);
+	d |= (~d>>7); 
+	#else
     d = (d>>6) | (~d>>7);
+	#endif
     d &= NONASCII_MASK >> 7;
 
     /* Gather all bytes. */
@@ -2189,9 +2219,17 @@ enc_strlen(const char *p, const char *e, rb_encoding *enc, int cr)
         uintptr_t len = 0;
         if ((int)sizeof(uintptr_t) * 2 < e - p) {
             const uintptr_t *s, *t;
+			#if defined(__CHERI_PURE_CAPABILITY__) 
+            const ULVALUE lowbits = SIZEOF_VOIDP - 1;
+			s = (const uintptr_t*) p;
+			s += lowbits; 
+			s = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)s, 15);
+			t = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)e, 15);
+			#else
             const uintptr_t lowbits = sizeof(uintptr_t) - 1;
             s = (const uintptr_t*)(~lowbits & ((uintptr_t)p + lowbits));
             t = (const uintptr_t*)(~lowbits & (uintptr_t)e);
+			#endif
             while (p < (const char *)s) {
                 if (is_utf8_lead_byte(*p)) len++;
                 p++;
@@ -2965,9 +3003,17 @@ str_utf8_nth(const char *p, const char *e, long *nthp)
     long nth = *nthp;
     if ((int)SIZEOF_VOIDP * 2 < e - p && (int)SIZEOF_VOIDP * 2 < nth) {
         const uintptr_t *s, *t;
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        const ULVALUE lowbits = SIZEOF_VOIDP - 1;
+        s = (const uintptr_t*) p;
+		s += lowbits; 
+		s = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)s, 15);
+		t = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)e, 15);
+		#else
         const uintptr_t lowbits = SIZEOF_VOIDP - 1;
         s = (const uintptr_t*)(~lowbits & ((uintptr_t)p + lowbits));
         t = (const uintptr_t*)(~lowbits & (uintptr_t)e);
+		#endif
         while (p < (const char *)s) {
             if (is_utf8_lead_byte(*p)) nth--;
             p++;

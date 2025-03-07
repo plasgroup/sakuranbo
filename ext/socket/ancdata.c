@@ -1356,7 +1356,11 @@ nogvl_recvmsg_func(void *ptr)
 {
     struct recvmsg_args_struct *args = ptr;
     int flags = args->flags;
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    return (void *)(VALUE)rsock_recvmsg(args->fd, args->msg, flags);
+	#else
     return (void *)rsock_recvmsg(args->fd, args->msg, flags);
+	#endif
 }
 
 static ssize_t

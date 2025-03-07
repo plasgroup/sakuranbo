@@ -6822,7 +6822,11 @@ vm_opt_or(VALUE recv, VALUE obj)
 {
     if (FIXNUM_2_P(recv, obj) &&
         BASIC_OP_UNREDEFINED_P(BOP_OR, INTEGER_REDEFINED_OP_FLAG)) {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        return recv | CULONG(obj);
+		#else
         return recv | obj;
+		#endif
     }
     else {
         return Qundef;

@@ -226,9 +226,15 @@ RB_NIL_OR_UNDEF_P(VALUE obj)
      *
      *  NIL_OR_UNDEF_P(v) can be true only when v is Qundef or Qnil.
      */
+	#if defined(__CHERI_PURE_CAPABILITY__)
+    const ULVALUE mask = RBIMPL_CAST((ULVALUE)~(RUBY_Qundef ^ RUBY_Qnil));
+    const ULVALUE common_bits = RUBY_Qundef & RUBY_Qnil;
+    return (CULONG(obj) & mask) == common_bits;
+	#else
     const VALUE mask = RBIMPL_CAST((VALUE)~(RUBY_Qundef ^ RUBY_Qnil));
     const VALUE common_bits = RUBY_Qundef & RUBY_Qnil;
     return (obj & mask) == common_bits;
+	#endif
 }
 
 RBIMPL_ATTR_CONST()
@@ -267,8 +273,13 @@ static inline bool
 RB_STATIC_SYM_P(VALUE obj)
 {
     RBIMPL_ATTR_CONSTEXPR(CXX14)
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    const ULVALUE mask = ~(RBIMPL_VALUE_FULL << RUBY_SPECIAL_SHIFT);
+    return (CULONG(obj) & mask) == RUBY_SYMBOL_FLAG;
+	#else
     const VALUE mask = ~(RBIMPL_VALUE_FULL << RUBY_SPECIAL_SHIFT);
     return (obj & mask) == RUBY_SYMBOL_FLAG;
+	#endif
 }
 
 RBIMPL_ATTR_CONST()

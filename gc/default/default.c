@@ -970,6 +970,9 @@ total_final_slots_count(rb_objspace_t *objspace)
 #elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
 # define obj_id_to_ref(objid) (FIXNUM_P(objid) ? \
    ((objid) ^ FIXNUM_FLAG) : (NUM2PTR(objid) << 1))
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+# define obj_id_to_ref(objid) (FIXNUM_P(objid) ? \
+	((objid) ^ FIXNUM_FLAG) : (NUM2PTR(objid) << 1))
 #else
 # error not supported
 #endif
@@ -4084,7 +4087,11 @@ invalidate_moved_page(rb_objspace_t *objspace, struct heap_page *page)
     uintptr_t p = page->start;
 
     // Skip out of range slots at the head of the page
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    bitset = pin_bits[0] & ~CULONG(mark_bits[0]);
+	#else
     bitset = pin_bits[0] & ~mark_bits[0];
+	#endif
     bitset >>= NUM_IN_PAGE(p);
     invalidate_moved_plane(objspace, page, p, bitset);
     p += (BITS_BITLENGTH - NUM_IN_PAGE(p)) * BASE_SLOT_SIZE;
@@ -4092,7 +4099,11 @@ invalidate_moved_page(rb_objspace_t *objspace, struct heap_page *page)
     for (i=1; i < HEAP_PAGE_BITMAP_LIMIT; i++) {
         /* Moved objects are pinned but never marked. We reuse the pin bits
          * to indicate there is a moved object in this slot. */
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        bitset = pin_bits[i] & ~CULONG(mark_bits[i]);
+		#else
         bitset = pin_bits[i] & ~mark_bits[i];
+		#endif
 
         invalidate_moved_plane(objspace, page, p, bitset);
         p += BITS_BITLENGTH * BASE_SLOT_SIZE;
@@ -5340,13 +5351,21 @@ gc_marks_wb_unprotected_objects(rb_objspace_t *objspace, rb_heap_t *heap)
         uintptr_t p = page->start;
         size_t j;
 
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        bits_t bits = mark_bits[0] & CULONG(wbun_bits[0]);
+		#else
         bits_t bits = mark_bits[0] & wbun_bits[0];
+		#endif
         bits >>= NUM_IN_PAGE(p);
         gc_marks_wb_unprotected_objects_plane(objspace, p, bits);
         p += (BITS_BITLENGTH - NUM_IN_PAGE(p)) * BASE_SLOT_SIZE;
 
         for (j=1; j<HEAP_PAGE_BITMAP_LIMIT; j++) {
+			#if defined(__CHERI_PURE_CAPABILITY__) 
+            bits_t bits = mark_bits[j] & CULONG(wbun_bits[j]);
+			#else
             bits_t bits = mark_bits[j] & wbun_bits[j];
+			#endif
 
             gc_marks_wb_unprotected_objects_plane(objspace, p, bits);
             p += BITS_BITLENGTH * BASE_SLOT_SIZE;
@@ -5621,7 +5640,11 @@ gc_compact_page(rb_objspace_t *objspace, rb_heap_t *heap, struct heap_page *page
     pin_bits = page->pinned_bits;
 
     // objects that can be moved are marked and not pinned
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    bitset = (mark_bits[0] & ~CULONG(pin_bits[0]));
+	#else
     bitset = (mark_bits[0] & ~pin_bits[0]);
+	#endif
     bitset >>= NUM_IN_PAGE(p);
     if (bitset) {
         if (!gc_compact_plane(objspace, heap, (uintptr_t)p, bitset, page))
@@ -5630,7 +5653,11 @@ gc_compact_page(rb_objspace_t *objspace, rb_heap_t *heap, struct heap_page *page
     p += (BITS_BITLENGTH - NUM_IN_PAGE(p)) * BASE_SLOT_SIZE;
 
     for (int j = 1; j < HEAP_PAGE_BITMAP_LIMIT; j++) {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        bitset = (mark_bits[j] & ~CULONG(pin_bits[j]));
+		#else
         bitset = (mark_bits[j] & ~pin_bits[j]);
+		#endif
         if (bitset) {
             if (!gc_compact_plane(objspace, heap, (uintptr_t)p, bitset, page))
                 return false;
@@ -5963,7 +5990,11 @@ rgengc_rememberset_mark(rb_objspace_t *objspace, rb_heap_t *heap)
             else if (page->flags.has_uncollectible_wb_unprotected_objects) has_shady++;
 #endif
             for (j=0; j<HEAP_PAGE_BITMAP_LIMIT; j++) {
+				#if defined(__CHERI_PURE_CAPABILITY__) 
+                bits[j] = remembered_bits[j] | BI_BIT_OP(uncollectible_bits[j], &, wb_unprotected_bits[j]);
+				#else
                 bits[j] = remembered_bits[j] | (uncollectible_bits[j] & wb_unprotected_bits[j]);
+				#endif
                 remembered_bits[j] = 0;
             }
             page->flags.has_remembered_objects = FALSE;

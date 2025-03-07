@@ -3432,6 +3432,8 @@ iseq_data_to_ary(const rb_iseq_t *iseq)
                 {
 #if SIZEOF_VALUE <= SIZEOF_LONG
                     VALUE val = LONG2NUM((SIGNED_VALUE)*seq);
+					#elif defined(__CHERI_PURE_CAPABILITY__)
+					VALUE val = LONG2NUM((SIGNED_VALUE)*seq);
 #else
                     VALUE val = LL2NUM((SIGNED_VALUE)*seq);
 #endif
@@ -3443,6 +3445,8 @@ iseq_data_to_ary(const rb_iseq_t *iseq)
                     VALUE val = rb_hash_new();
 #if SIZEOF_VALUE <= SIZEOF_LONG
                     VALUE func_ptr = LONG2NUM((SIGNED_VALUE)((RB_BUILTIN)*seq)->func_ptr);
+					#elif defined(__CHERI_PURE_CAPABILITY__)
+VALUE func_ptr = LONG2NUM((SIGNED_VALUE)((RB_BUILTIN)*seq)->func_ptr);
 #else
                     VALUE func_ptr = LL2NUM((SIGNED_VALUE)((RB_BUILTIN)*seq)->func_ptr);
 #endif

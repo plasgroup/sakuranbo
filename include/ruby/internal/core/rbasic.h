@@ -72,7 +72,11 @@ RBasic {
      * @note  This is ::VALUE rather than  an enum for alignment purposes.  Back
      *        in the 1990s there were no such thing like `_Alignas` in C.
      */
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    VALUE flags NO_PROVENANCE;
+	#else
     VALUE flags;
+	#endif
 
     /**
      * Class of an object.  Every object has its class.  Also, everything is an

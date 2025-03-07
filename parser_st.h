@@ -26,6 +26,15 @@ RUBY_SYMBOL_EXPORT_BEGIN
 typedef unsigned long parser_st_data_t;
 #elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
 typedef unsigned LONG_LONG parser_st_data_t;
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+typedef uintptr_t parser_st_data_t;
+
+typedef unsigned long ULVALUE;  
+# define SIZEOF_ULVALUE 8
+#define CULONG(x) ((size_t) (x))
+#define BI_BIT_OP(lhs, op, rhs) ((CULONG(lhs)) op (CULONG(rhs)))
+#define TRI_BIT_OP(lhs, op1, mid, op2, rhs) ((CULONG(lhs)) op1 (CULONG(mid)) op2 (CULONG(rhs)))
+#define MASK_CMP(value, mask, expected) (BI_BIT_OP((BI_BIT_OP(value, &, mask)), ==, expected))
 #else
 # error ---->> parser_st.c requires sizeof(void*) == sizeof(long) or sizeof(LONG_LONG) to be compiled. <<----
 #endif
@@ -51,7 +60,11 @@ typedef unsigned LONG_LONG parser_st_data_t;
 
 typedef struct parser_st_table parser_st_table;
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+typedef ULVALUE parser_st_index_t;
+#else
 typedef parser_st_data_t parser_st_index_t;
+#endif
 
 /* Maximal value of unsigned integer type parser_st_index_t.  */
 #define MAX_ST2_INDEX_VAL (~(parser_st_index_t) 0)
@@ -59,8 +72,13 @@ typedef parser_st_data_t parser_st_index_t;
 typedef int parser_st_compare_func(parser_st_data_t, parser_st_data_t);
 typedef parser_st_index_t parser_st_hash_func(parser_st_data_t);
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+typedef char st_check_for_sizeof_parser_st_index_t[SIZEOF_ULVALUE == (int)sizeof(parser_st_index_t) ? 1 : -1];
+#define SIZEOF_ST_INDEX_T SIZEOF_ULVALUE
+#else
 typedef char st_check_for_sizeof_parser_st_index_t[SIZEOF_VOIDP == (int)sizeof(parser_st_index_t) ? 1 : -1];
 #define SIZEOF_ST_INDEX_T SIZEOF_VOIDP
+#endif
 
 struct parser_st_hash_type {
     int (*compare)(parser_st_data_t, parser_st_data_t); /* parser_st_compare_func* */

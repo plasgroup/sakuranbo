@@ -374,7 +374,11 @@ nlz_intptr(uintptr_t x)
         return nlz_long_long((unsigned long long)x);
     }
     else {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+		return nlz_long((unsigned long)x);
+		#else
         UNREACHABLE_RETURN(~0);
+		#endif
     }
 }
 
@@ -441,6 +445,11 @@ rb_popcount_intptr(uintptr_t x)
     else if (sizeof(uintptr_t) * CHAR_BIT == 32) {
         return rb_popcount32((uint32_t)x);
     }
+	#if defined(__CHERI_PURE_CAPABILITY__)
+	else if (sizeof(uintptr_t) * CHAR_BIT == 128) {
+        return rb_popcount64((uint64_t)x);
+	}
+	#endif
     else {
         UNREACHABLE_RETURN(~0);
     }
@@ -509,7 +518,11 @@ ntz_intptr(uintptr_t x)
         return ntz_int32((uint32_t)x);
     }
     else {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+		return nlz_long((unsigned long)x);
+		#else
         UNREACHABLE_RETURN(~0);
+		#endif
     }
 }
 
@@ -532,8 +545,13 @@ RUBY_BIT_ROTL(VALUE v, int n)
     return _lrotl(v, n);
 
 #else
+#if defined(__CHERI_PURE_CAPABILITY__) 
+    const int m = (sizeof(ULVALUE) * CHAR_BIT) - 1;
+    return (v << (n & m)) | CULONG(v >> (-n & m));
+	#else
     const int m = (sizeof(VALUE) * CHAR_BIT) - 1;
     return (v << (n & m)) | (v >> (-n & m));
+	#endif
 #endif
 }
 
@@ -556,8 +574,13 @@ RUBY_BIT_ROTR(VALUE v, int n)
     return _lrotr(v, n);
 
 #else
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+	const int m = (sizeof(ULVALUE) * CHAR_BIT) - 1;
+	return (v << (-n & m)) | CULONG(v >> (n & m));
+	#else
     const int m = (sizeof(VALUE) * CHAR_BIT) - 1;
     return (v << (-n & m)) | (v >> (n & m));
+	#endif
 #endif
 }
 

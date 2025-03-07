@@ -765,6 +765,9 @@ w_bigfixnum(VALUE obj, struct dump_arg *arg)
 #if SIZEOF_LONG == SIZEOF_VALUE
     long num, slen_num;
     num = FIX2LONG(obj);
+	#elif defined(__CHERI_PURE_CAPABILITY__)
+long num, slen_num;
+num = FIX2LONG(obj);
 #else
     long long num, slen_num;
     num = NUM2LL(obj);

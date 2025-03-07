@@ -234,7 +234,11 @@ rb_darray_resize_capa_impl(void *ptr_to_ary, size_t new_capa, size_t header_size
 
     // We don't have access to the type of the dynamic array in function context.
     // Write out result with memcpy to avoid strict aliasing issue.
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+	memcpy(__builtin_assume_aligned(ptr_to_ary, _Alignof(void *)), __builtin_assume_aligned(&new_ary, _Alignof(void *)), sizeof(new_ary));
+	#else
     memcpy(ptr_to_ary, &new_ary, sizeof(new_ary));
+	#endif
 }
 
 // Internal function

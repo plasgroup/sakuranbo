@@ -755,7 +755,11 @@ static inline void *
 ruby_nonempty_memcpy(void *dest, const void *src, size_t n)
 {
     if (n) {
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+        return memcpy(__builtin_assume_aligned(dest, _Alignof(void *)), __builtin_assume_aligned(src, _Alignof(void *)), n);
+		#else
         return memcpy(dest, src, n);
+		#endif
     }
     else {
         return dest;

@@ -27,6 +27,9 @@ static const VALUE DATA_VISIBLE_BITS = FL_FREEZE | ~(FL_USER0 - 1);
 #elif SIZEOF_VALUE == SIZEOF_LONG_LONG
 #define VALUE2NUM(v) ULL2NUM(v)
 #define NUM2VALUE(n) NUM2ULL(n)
+#elif defined(__CHERI_PURE_CAPABILITY__)
+#define VALUE2NUM(v) ULONG2NUM(v)
+#define NUM2VALUE(n) NUM2ULONG(n)
 #else
 #error "unsupported"
 #endif

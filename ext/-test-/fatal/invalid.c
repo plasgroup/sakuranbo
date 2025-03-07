@@ -4,6 +4,8 @@
 # define NUM2PTR(x) NUM2ULONG(x)
 #elif SIZEOF_LONG_LONG == SIZEOF_VOIDP
 # define NUM2PTR(x) NUM2ULL(x)
+#elif defined(__CHERI_PURE_CAPABILITY__) 
+# define NUM2PTR(x) (VALUE) NUM2ULL(x)
 #endif
 
 static VALUE

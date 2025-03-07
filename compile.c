@@ -48,7 +48,11 @@
 #include "insns.inc"
 #include "insns_info.inc"
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#define FIXNUM_INC(n, i) BI_ART_OP((n), +, (INT2FIX(i)&~FIXNUM_FLAG))
+#else
 #define FIXNUM_INC(n, i) ((n)+(INT2FIX(i)&~FIXNUM_FLAG))
+#endif
 
 typedef struct iseq_link_element {
     enum {
@@ -1047,6 +1051,10 @@ rb_iseq_original_iseq(const rb_iseq_t *iseq) /* cold path */
   #ifdef __STRICT_ALIGNMENT
     #define STRICT_ALIGNMENT
   #endif
+#endif
+
+#if defined(__CHERI_PURE_CAPABILITY__) 
+ #define STRICT_ALIGNMENT
 #endif
 
 #ifdef STRICT_ALIGNMENT
