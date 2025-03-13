@@ -39,7 +39,11 @@ typedef struct ruby_cmdline_options {
 #if USE_YJIT
     unsigned int yjit: 1;
 #endif
+#if defined(__CHERI_PURE_CAPABILITY__) 
+} ruby_cmdline_options_t CALIGN;
+#else
 } ruby_cmdline_options_t;
+#endif
 
 struct ruby_opt_message {
     const char *str;

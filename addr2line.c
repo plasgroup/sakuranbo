@@ -166,11 +166,11 @@ typedef struct line_info {
     const char *sname; /* function name */
 
     struct line_info *next;
-#if defined(__CHERI_PURE_CAPABILITY__) 
-} line_info_t CALIGN;
-#else
+// #if defined(__CHERI_PURE_CAPABILITY__) 
+// } line_info_t CALIGN;
+// #else
 } line_info_t;
-#endif
+// #endif
 
 struct dwarf_section {
     char *ptr;
@@ -225,11 +225,11 @@ struct debug_section_definition {
 };
 
 /* Avoid consuming stack as this module may be used from signal handler */
-#if defined(__CHERI_PURE_CAPABILITY__) 
-static char binary_filename[PATH_MAX + 1] CALIGN;
-#else
+// #if defined(__CHERI_PURE_CAPABILITY__) 
+// static char binary_filename[PATH_MAX + 1] CALIGN;
+// #else
 static char binary_filename[PATH_MAX + 1];
-#endif
+// #endif
 
 static unsigned long
 uleb128(const char **p)
@@ -621,11 +621,11 @@ static void
 follow_debuglink(const char *debuglink, int num_traces, void **traces,
                  obj_info_t **objp, line_info_t *lines, int offset, FILE *errout)
 {
-	#if defined(__CHERI_PURE_CAPABILITY__) 
-    static const char CALIGN global_debug_dir[] = "/usr/lib/debug";
-	#else
+	// #if defined(__CHERI_PURE_CAPABILITY__) 
+    // static const char CALIGN global_debug_dir[] = "/usr/lib/debug";
+	// #else
     static const char global_debug_dir[] = "/usr/lib/debug";
-	#endif
+	// #endif
     const size_t global_debug_dir_len = sizeof(global_debug_dir) - 1;
     char *p;
     obj_info_t *o1 = *objp, *o2;
@@ -1201,8 +1201,10 @@ debug_info_reader_read_addr_value_member(DebugInfoReader *reader, DebugInfoValue
         set_uint_value(v, read_uint32(&reader->p));
     } else if (size == 8) {
         set_uint_value(v, read_uint64(&reader->p));
+	#if defined(__CHERI_PURE_CAPABILITY__) 
 	} else if (size == 16) {
 		set_uint_value(v, read_uint64(&reader->p));
+	#endif
     } else {
         return false;
     }
