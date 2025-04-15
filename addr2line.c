@@ -129,6 +129,10 @@ void *alloca();
 #define PATH_MAX 4096
 #endif
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#include <cheriintrin.h>
+#endif
+
 #define DW_LNS_copy                     0x01
 #define DW_LNS_advance_pc               0x02
 #define DW_LNS_advance_line             0x03
@@ -2271,12 +2275,22 @@ use_symtab:
             int symtab_count = (int)(symtab_shdr->sh_size / sizeof(ElfW(Sym)));
             for (j = 0; j < symtab_count; j++) {
                 ElfW(Sym) *sym = &symtab[j];
+				#if defined(__CHERI_PURE_CAPABILITY__) 
+                size_t saddr = sym->st_value + (size_t) obj->base_addr;
+				#else
                 uintptr_t saddr = (uintptr_t)sym->st_value + obj->base_addr;
+				#endif
                 if (ELF_ST_TYPE(sym->st_info) != STT_FUNC) continue;
                 for (i = offset; i < num_traces; i++) {
+					#if defined(__CHERI_PURE_CAPABILITY__) 
+					size_t d = (size_t)traces[i] - saddr;
+                    if (lines[i].line > 0 || d > (size_t)sym->st_size)
+                        continue;
+					#else
                     uintptr_t d = (uintptr_t)traces[i] - saddr;
                     if (lines[i].line > 0 || d > (uintptr_t)sym->st_size)
                         continue;
+					#endif
                     /* fill symbol name and addr from .symtab */
                     if (!lines[i].sname) lines[i].sname = strtab + sym->st_name;
                     lines[i].saddr = saddr;
@@ -2605,7 +2619,11 @@ static void
 print_line0(line_info_t *line, void *address, FILE *errout)
 {
     uintptr_t addr = (uintptr_t)address;
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+    uintptr_t d = (size_t) addr - (size_t) line->saddr;
+	#else
     uintptr_t d = addr - line->saddr;
+	#endif
     if (!address) {
         /* inlined */
         if (line->dirname && line->dirname[0]) {
