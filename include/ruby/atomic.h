@@ -912,14 +912,14 @@ rbimpl_atomic_ptr_cas(void **ptr, const void *oldval, const void *newval)
     return atomic_cas_ptr(ptr, pold, pnew);
 
 #elif defined(__CHERI_PURE_CAPABILITY__) 
+	void *ret = *ptr; 
 	_Atomic(void*) *p = (_Atomic(void*) *)ptr;
 	void *pold = RBIMPL_CAST((void *)oldval);
     void *pnew = RBIMPL_CAST((void *)newval);
 	if (atomic_compare_exchange_strong(p, &pold, pnew)) {
-		return pold; // ret old upon success
-	} else {
-		return pnew;
+		ret = pold;
 	}
+	return ret;
 
 #else
     RBIMPL_STATIC_ASSERT(sizeof_voidp, sizeof *ptr == sizeof(size_t));
@@ -956,11 +956,11 @@ static inline VALUE
 rbimpl_atomic_value_cas(volatile VALUE *ptr, VALUE oldval, VALUE newval)
 {
 	#if defined(__CHERI_PURE_CAPABILITY__) 
+	VALUE ret = *ptr;
 	if (atomic_compare_exchange_strong((_Atomic(VALUE) *)ptr, &oldval, newval)) {
-		return oldval;
-	} else {
-		return newval;
+		ret = oldval;
 	}
+	return ret;
 	#else
     RBIMPL_STATIC_ASSERT(sizeof_value, sizeof *ptr == sizeof(size_t));
 
