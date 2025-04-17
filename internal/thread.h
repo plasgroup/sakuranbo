@@ -14,12 +14,21 @@
 
 struct rb_thread_struct;        /* in vm_core.h */
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#define RB_VM_SAVE_MACHINE_CONTEXT(th)				\
+    do {							\
+        FLUSH_REGISTER_WINDOWS;					\
+        setjmp((th)->ec->machine.regs);				\
+        SET_MACHINE_STACK_END(&(th)->ec->machine.stack_end, (th)->ec->machine.stack_start);	\
+    } while (0)
+#else
 #define RB_VM_SAVE_MACHINE_CONTEXT(th)				\
     do {							\
         FLUSH_REGISTER_WINDOWS;					\
         setjmp((th)->ec->machine.regs);				\
         SET_MACHINE_STACK_END(&(th)->ec->machine.stack_end);	\
     } while (0)
+#endif
 
 /* thread.c */
 #define COVERAGE_INDEX_LINES    0
