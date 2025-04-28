@@ -2175,6 +2175,28 @@ rb_str_s_new(int argc, VALUE *argv, VALUE klass)
  * in the argument word by concurrently using the above logic, and then
  * adds up the number of leading bytes in the word.
  */
+#if defined(__CHERI_PURE_CAPABILITY__) 
+static inline ULVALUE
+count_utf8_lead_bytes_with_word(const ULVALUE *s)
+{
+    ULVALUE d = *s;
+
+    /* Transform so that bit0 indicates whether we have a UTF-8 leading byte or not. */
+    d = (d>>6) | (~d>>7);
+    d &= NONASCII_MASK >> 7;
+
+    /* Gather all bytes. */
+#if defined(HAVE_BUILTIN___BUILTIN_POPCOUNT) && defined(__POPCNT__)
+    /* use only if it can use POPCNT */
+    return rb_popcount_intptr(d);
+#else
+    d += (d>>8);
+    d += (d>>16);
+    d += (d>>32);
+    return (d&0xF);
+#endif
+}
+#else
 static inline uintptr_t
 count_utf8_lead_bytes_with_word(const uintptr_t *s)
 {
@@ -2203,6 +2225,7 @@ count_utf8_lead_bytes_with_word(const uintptr_t *s)
 #endif
 }
 #endif
+#endif
 
 static inline long
 enc_strlen(const char *p, const char *e, rb_encoding *enc, int cr)
@@ -2216,20 +2239,11 @@ enc_strlen(const char *p, const char *e, rb_encoding *enc, int cr)
     }
 #ifdef NONASCII_MASK
     else if (cr == ENC_CODERANGE_VALID && enc == rb_utf8_encoding()) {
-        uintptr_t len = 0;
-        if ((int)sizeof(uintptr_t) * 2 < e - p) {
-            const uintptr_t *s, *t;
-			#if defined(__CHERI_PURE_CAPABILITY__) 
-            const ULVALUE lowbits = SIZEOF_VOIDP - 1;
-			s = (const uintptr_t*) p;
-			s += lowbits; 
-			s = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)s, 15);
-			t = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)e, 15);
-			#else
-            const uintptr_t lowbits = sizeof(uintptr_t) - 1;
-            s = (const uintptr_t*)(~lowbits & ((uintptr_t)p + lowbits));
-            t = (const uintptr_t*)(~lowbits & (uintptr_t)e);
-			#endif
+		#if defined(__CHERI_PURE_CAPABILITY__) 
+		ULVALUE len = 0;
+        if ((int)sizeof(ULVALUE) * 2 < e - p) {
+            const ULVALUE *s = (const ULVALUE*)__builtin_align_up(p, 8); 
+			const ULVALUE *t = (const ULVALUE*)__builtin_align_down(e, 8);
             while (p < (const char *)s) {
                 if (is_utf8_lead_byte(*p)) len++;
                 p++;
@@ -2245,6 +2259,29 @@ enc_strlen(const char *p, const char *e, rb_encoding *enc, int cr)
             p++;
         }
         return (long)len;
+		#else
+        uintptr_t len = 0;
+        if ((int)sizeof(uintptr_t) * 2 < e - p) {
+            const uintptr_t *s, *t;
+            const uintptr_t lowbits = sizeof(uintptr_t) - 1;
+            s = (const uintptr_t*)(~lowbits & ((uintptr_t)p + lowbits));
+            t = (const uintptr_t*)(~lowbits & (uintptr_t)e);
+            while (p < (const char *)s) {
+                if (is_utf8_lead_byte(*p)) len++;
+                p++;
+            }
+            while (s < t) {
+                len += count_utf8_lead_bytes_with_word(s);
+                s++;
+            }
+            p = (const char *)s;
+        }
+        while (p < e) {
+            if (is_utf8_lead_byte(*p)) len++;
+            p++;
+        }
+        return (long)len;
+		#endif
     }
 #endif
     else if (rb_enc_asciicompat(enc)) {
@@ -3001,19 +3038,26 @@ static char *
 str_utf8_nth(const char *p, const char *e, long *nthp)
 {
     long nth = *nthp;
+	#if defined(__CHERI_PURE_CAPABILITY__) 
+	if ((int)SIZEOF_ULVALUE * 2 < e - p && (int)SIZEOF_ULVALUE * 2 < nth) {
+		const ULVALUE *s = (const ULVALUE*)__builtin_align_up(p, 8); 
+		const ULVALUE *t = (const ULVALUE*)__builtin_align_down(e, 8);
+        while (p < (const char *)s) {
+            if (is_utf8_lead_byte(*p)) nth--;
+            p++;
+        }
+        do {
+            nth -= count_utf8_lead_bytes_with_word(s);
+            s++;
+        } while (s < t && (int)SIZEOF_ULVALUE <= nth);
+        p = (char *)s;
+    }
+	#else
     if ((int)SIZEOF_VOIDP * 2 < e - p && (int)SIZEOF_VOIDP * 2 < nth) {
         const uintptr_t *s, *t;
-		#if defined(__CHERI_PURE_CAPABILITY__) 
-        const ULVALUE lowbits = SIZEOF_VOIDP - 1;
-        s = (const uintptr_t*) p;
-		s += lowbits; 
-		s = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)s, 15);
-		t = (const uintptr_t*) cheri_low_bits_clear((uintptr_t)e, 15);
-		#else
         const uintptr_t lowbits = SIZEOF_VOIDP - 1;
         s = (const uintptr_t*)(~lowbits & ((uintptr_t)p + lowbits));
         t = (const uintptr_t*)(~lowbits & (uintptr_t)e);
-		#endif
         while (p < (const char *)s) {
             if (is_utf8_lead_byte(*p)) nth--;
             p++;
@@ -3024,6 +3068,7 @@ str_utf8_nth(const char *p, const char *e, long *nthp)
         } while (s < t && (int)SIZEOF_VOIDP <= nth);
         p = (char *)s;
     }
+	#endif
     while (p < e) {
         if (is_utf8_lead_byte(*p)) {
             if (nth == 0) break;
