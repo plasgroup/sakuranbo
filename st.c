@@ -2097,7 +2097,8 @@ st_numhash(st_data_t n)
 {
     enum {s1 = 11, s2 = 3};
 	#if defined(__CHERI_PURE_CAPABILITY__) 
-    return (st_index_t)(((ptraddr_t)(n)>>s1|((ptraddr_t)(n)<<s2)) ^ ((ptraddr_t)(n)>>s2));
+	ptraddr_t n1 = (ptraddr_t) n;
+    return (st_index_t)((n1>>s1|(n1<<s2)) ^ (n1>>s2));
 	#else
     return (st_index_t)((n>>s1|(n<<s2)) ^ (n>>s2));
 	#endif
