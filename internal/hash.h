@@ -14,7 +14,11 @@
 #include "ruby/ruby.h"          /* for struct RBasic */
 #include "ruby/st.h"            /* for struct st_table */
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+#define RHASH_AR_TABLE_MAX_SIZE SIZEOF_ULVALUE
+#else
 #define RHASH_AR_TABLE_MAX_SIZE SIZEOF_VALUE
+#endif
 
 struct ar_table_struct;
 typedef unsigned char ar_hint_t;
