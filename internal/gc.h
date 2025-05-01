@@ -33,8 +33,14 @@
 #elif defined(__aarch64__) && defined(__GNUC__)
 #define SET_MACHINE_STACK_END(p) __asm__ __volatile__ ("mov\t%0, sp" : "=r" (*(p)))
 #else
+#if defined(__CHERI_PURE_CAPABILITY__) 
+NOINLINE(void rb_gc_set_stack_end(VALUE **stack_end_p));
+NOINLINE(void rb_gc_set_stack_end2(VALUE **stack_end_p, VALUE *stack_start));
+#define SET_MACHINE_STACK_END(p, s) rb_gc_set_stack_end2(p, s)
+#else
 NOINLINE(void rb_gc_set_stack_end(VALUE **stack_end_p));
 #define SET_MACHINE_STACK_END(p) rb_gc_set_stack_end(p)
+#endif
 #define USE_CONSERVATIVE_STACK_END
 #endif
 
