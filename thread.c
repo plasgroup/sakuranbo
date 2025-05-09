@@ -99,6 +99,10 @@
 #include "vm_debug.h"
 #include "vm_sync.h"
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+# include <cheriintrin.h>
+#endif
+
 #ifndef USE_NATIVE_THREAD_PRIORITY
 #define USE_NATIVE_THREAD_PRIORITY 0
 #define RUBY_THREAD_PRIORITY_MAX 3
@@ -4576,6 +4580,18 @@ COMPILER_WARNING_IGNORED(-Wdangling-pointer);
     *stack_end_p = &stack_end;
 COMPILER_WARNING_POP
 }
+
+#if defined(__CHERI_PURE_CAPABILITY__) 
+void 
+rb_gc_set_stack_end2(VALUE **stack_end_p, VALUE *stack_start)
+{
+	VALUE *stack_end;
+	rb_gc_set_stack_end(&stack_end);
+	ptraddr_t stack_end_addr = cheri_address_get(stack_end);
+	*stack_end_p = (VALUE *) cheri_address_set(stack_start, stack_end_addr);
+}
+#endif
+
 #endif
 
 /*

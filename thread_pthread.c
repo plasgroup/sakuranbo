@@ -51,6 +51,10 @@
 #  define USE_EVENTFD (0)
 #endif
 
+#if defined(__CHERI_PURE_CAPABILITY__) 
+# include <cheriintrin.h>
+#endif
+
 #if defined(HAVE_PTHREAD_CONDATTR_SETCLOCK) && \
     defined(CLOCK_REALTIME) && defined(CLOCK_MONOTONIC) && \
     defined(HAVE_CLOCK_GETTIME)
@@ -2038,8 +2042,13 @@ native_thread_init_stack(rb_thread_t *th, void *local_in_parent_frame)
             size_t size;
 
             if (get_stack(&start, &size) == 0) {
+				#if defined(__CHERI_PURE_CAPABILITY__) 
+                ptraddr_t diff = (ptraddr_t)start - (ptraddr_t)local_in_parent_frame;
+                th->ec->machine.stack_start = cheri_address_set(start, (ptraddr_t)local_in_parent_frame);
+				#else
                 uintptr_t diff = (uintptr_t)start - (uintptr_t)local_in_parent_frame;
                 th->ec->machine.stack_start = local_in_parent_frame;
+				#endif
                 th->ec->machine.stack_maxsize = size - diff;
             }
         }
@@ -2817,9 +2826,8 @@ static rb_thread_t *
 thread_sched_waiting_thread(struct rb_thread_sched_waiting *w)
 {
     if (w) {
-		#if defined(__CHERI_PURE_CAPABILITY__) 
-		w -= offsetof(rb_thread_t, sched.waiting_reason);
-		return (rb_thread_t *) w;
+		#if defined(__CHERI_PURE_CAPABILITY__)
+		return (rb_thread_t *)((uintptr_t)w - offsetof(rb_thread_t, sched.waiting_reason));
 		#else
         return (rb_thread_t *)((size_t)w - offsetof(rb_thread_t, sched.waiting_reason));
 		#endif
