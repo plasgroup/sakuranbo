@@ -2203,12 +2203,7 @@ count_utf8_lead_bytes_with_word(const uintptr_t *s)
     uintptr_t d = *s;
 
     /* Transform so that bit0 indicates whether we have a UTF-8 leading byte or not. */
-	#if defined(__CHERI_PURE_CAPABILITY__) 
-	d = (d>>6);
-	d |= (~d>>7); 
-	#else
     d = (d>>6) | (~d>>7);
-	#endif
     d &= NONASCII_MASK >> 7;
 
     /* Gather all bytes. */
